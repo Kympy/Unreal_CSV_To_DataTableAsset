@@ -25,7 +25,7 @@ def create_data_table_asset(csv_path):
     # 데이터 테이블 파일명
     asset_name = "DT_" + file_name
     # base struct 스크립트 경로
-    unreal_struct_path = "/Script/" + project_name + "." + file_name
+    unreal_struct_path = "/Script/" + project_name + "." + file_name + "Data"
 
     print("--------- Creating data table asset..." + " Struct path : " + unreal_struct_path + " ----------")
     print("-")
@@ -38,9 +38,9 @@ def create_data_table_asset(csv_path):
 
     # CSV 를 추출해서 순 데이터만 존재하는 임시파일 생성
     origin_rows = []
-    with open(csv_path, 'r') as origin:
+    with open(csv_path, 'r', encoding='utf-8') as origin:
         csv_reader = csv.reader(origin)
-        id_row_index = sys.maxsize
+        id_row_index = -1
 
         for index, row in enumerate(csv_reader):
             origin_rows.append(row)
@@ -56,11 +56,21 @@ def create_data_table_asset(csv_path):
         if index >= id_row_index:
             raw_data_rows.append(row)
 
-    temp_csv_path = unreal.SystemLibrary.get_project_directory() + "Temp_TableGenerator.csv"
-
-    with open(temp_csv_path, 'w') as temp_csv:
+    temp_csv_path = unreal.SystemLibrary.get_project_directory() + "/Temp/Temp_" + file_name + ".csv"
+    
+    # 무시할 열 인덱스 찾기 -> # 붙은거
+    ignore_column_index = []
+    for index, column in enumerate(raw_data_rows[0]):
+        if str(column).find("#") >= 0:
+            ignore_column_index.append(index)
+            print("Ignore line : " + str(index))
+    
+    with open(temp_csv_path, 'w', encoding='utf-8') as temp_csv:
         for row in raw_data_rows:
             for index, data in enumerate(row):
+                # 무시할 열이면 스킵
+                if index in ignore_column_index:
+                    continue
                 temp_csv.write(data)
                 if index != len(row):
                     temp_csv.write(",")
@@ -80,12 +90,12 @@ def create_data_table_asset(csv_path):
 
     unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
 
-    try:
-        os.remove(temp_csv_path)
-    except FileNotFoundError:
-        return
-    except Exception as e:
-        unreal.log_error(e)
+    #try:
+        #os.remove(temp_csv_path)
+    #except FileNotFoundError:
+        #return
+    #except Exception as e:
+        #unreal.log_error(e)
 
 
 # 시작 함수
